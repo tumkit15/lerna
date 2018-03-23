@@ -33,6 +33,7 @@
     "test": "echo \"Run tests from root\" && exit 1"
   },
   "yargs": {
+    "camel-case-expansion": false,
     "populate--": true
   },
   "dependencies": {
