@@ -14,8 +14,8 @@ const getRangeToReference = require("./lib/get-range-to-reference");
 
 module.exports = factory;
 
-function factory(argv) {
-  return new AddCommand(argv);
+function factory(argv, spec) {
+  return new AddCommand(argv, spec);
 }
 
 class AddCommand extends Command {

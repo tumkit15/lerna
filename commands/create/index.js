@@ -32,8 +32,8 @@ const DEFAULT_DESCRIPTION = [
 
 module.exports = factory;
 
-function factory(argv) {
-  return new CreateCommand(argv);
+function factory(argv, spec) {
+  return new CreateCommand(argv, spec);
 }
 
 class CreateCommand extends Command {

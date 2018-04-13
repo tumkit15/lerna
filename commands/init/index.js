@@ -10,8 +10,8 @@ const childProcess = require("@lerna/child-process");
 
 module.exports = factory;
 
-function factory(argv) {
-  return new InitCommand(argv);
+function factory(argv, spec) {
+  return new InitCommand(argv, spec);
 }
 
 class InitCommand extends Command {

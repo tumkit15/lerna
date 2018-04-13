@@ -8,8 +8,8 @@ const hasCommit = require("./lib/has-commit");
 
 module.exports = factory;
 
-function factory(argv) {
-  return new DiffCommand(argv);
+function factory(argv, spec) {
+  return new DiffCommand(argv, spec);
 }
 
 class DiffCommand extends Command {

@@ -1,6 +1,20 @@
 "use strict";
 
 module.exports = globalOptions;
+module.exports.spec = {
+  loglevel: {},
+  concurrency: {
+    default: 4,
+  },
+  "reject-cycles": "rejectCycles",
+  rejectCycles: {},
+  progress: {},
+  sort: {
+    default: true,
+  },
+  "max-buffer": "maxBuffer",
+  maxBuffer: {},
+};
 
 function globalOptions(yargs, { ci = false, loglevel = "info", progress = true }) {
   // the global options applicable to _every_ command

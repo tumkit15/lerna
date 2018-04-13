@@ -1,5 +1,107 @@
 "use strict";
 
+// FIXME: extract util
+const camelize = str => str.replace(/-(\w)/g, (m, p1) => p1.toUpperCase());
+const getSpec = yargsOptions =>
+  Object.keys(yargsOptions).reduce((obj, key) => {
+    const cfg = yargsOptions[key];
+
+    obj[key] = {};
+
+    if (cfg.defaultDescription && cfg.type) {
+      // default descriptions _without_ type must _remain_ undefined
+      obj[key].default = cfg.type === "boolean" ? JSON.parse(cfg.defaultDescription) : cfg.defaultDescription;
+    } else if (cfg.default) {
+      // propagate explicit defaults
+      obj[key].default = cfg.default;
+    } else if (cfg.type === "array") {
+      // yargs does this, but why not
+      obj[key].default = [];
+    }
+
+    if (key.indexOf("-") > -1) {
+      // back-compat for durable camelOptions
+      const ref = camelize(key);
+
+      obj[ref] = obj[key];
+      obj[key] = ref;
+    }
+
+    return obj;
+  }, {});
+
+const opts = {
+  access: {
+    group: "Command Options:",
+    defaultDescription: "public",
+    describe: "When using a scope, set publishConfig.access value",
+    choices: ["public", "restricted"],
+    type: "string",
+  },
+  bin: {
+    group: "Command Options:",
+    defaultDescription: "<name>",
+    describe: "Package has an executable. Customize with --bin <executableName>",
+  },
+  description: {
+    group: "Command Options:",
+    describe: "Package description",
+    type: "string",
+  },
+  dependencies: {
+    group: "Command Options:",
+    describe: "A list of package dependencies",
+    type: "array",
+  },
+  "es-module": {
+    group: "Command Options:",
+    describe: "Initialize a transpiled ES Module",
+    type: "boolean",
+  },
+  homepage: {
+    group: "Command Options:",
+    describe: "The package homepage, defaulting to a subpath of the root pkg.homepage",
+    type: "string",
+  },
+  keywords: {
+    group: "Command Options:",
+    describe: "A list of package keywords",
+    type: "array",
+  },
+  license: {
+    group: "Command Options:",
+    defaultDescription: "ISC",
+    describe: "The desired package license (SPDX identifier)",
+    type: "string",
+  },
+  private: {
+    group: "Command Options:",
+    describe: "Make the new package private, never published to any external registry",
+    type: "boolean",
+  },
+  registry: {
+    group: "Command Options:",
+    describe: "Configure the package's publishConfig.registry",
+    type: "string",
+  },
+  tag: {
+    group: "Command Options:",
+    describe: "Configure the package's publishConfig.tag",
+    type: "string",
+  },
+  yes: {
+    group: "Command Options:",
+    describe: "Skip all prompts, accepting default values",
+    type: "boolean",
+  },
+};
+
+const spec = getSpec(opts);
+
+// add positionals
+spec.name = {};
+spec.loc = {};
+
 /**
  * @see https://github.com/yargs/yargs/blob/master/docs/advanced.md#providing-a-command-module
  */
@@ -17,74 +119,11 @@ exports.builder = yargs => {
       describe: "A custom package location, defaulting to the first configured package location",
       type: "string",
     })
-    .options({
-      access: {
-        group: "Command Options:",
-        defaultDescription: "public",
-        describe: "When using a scope, set publishConfig.access value",
-        choices: ["public", "restricted"],
-      },
-      bin: {
-        group: "Command Options:",
-        defaultDescription: "<name>",
-        describe: "Package has an executable. Customize with --bin <executableName>",
-      },
-      description: {
-        group: "Command Options:",
-        describe: "Package description",
-        type: "string",
-      },
-      dependencies: {
-        group: "Command Options:",
-        describe: "A list of package dependencies",
-        type: "array",
-      },
-      "es-module": {
-        group: "Command Options:",
-        describe: "Initialize a transpiled ES Module",
-        type: "boolean",
-      },
-      homepage: {
-        group: "Command Options:",
-        describe: "The package homepage, defaulting to a subpath of the root pkg.homepage",
-        type: "string",
-      },
-      keywords: {
-        group: "Command Options:",
-        describe: "A list of package keywords",
-        type: "array",
-      },
-      license: {
-        group: "Command Options:",
-        defaultDescription: "ISC",
-        describe: "The desired package license (SPDX identifier)",
-        type: "string",
-      },
-      private: {
-        group: "Command Options:",
-        describe: "Make the new package private, never published to any external registry",
-        type: "boolean",
-      },
-      registry: {
-        group: "Command Options:",
-        describe: "Configure the package's publishConfig.registry",
-        type: "string",
-      },
-      tag: {
-        group: "Command Options:",
-        describe: "Configure the package's publishConfig.tag",
-        type: "string",
-      },
-      yes: {
-        group: "Command Options:",
-        describe: "Skip all prompts, accepting default values",
-        type: "boolean",
-      },
-    });
+    .options(opts);
 
   return yargs;
 };
 
 exports.handler = function handler(argv) {
-  return require(".")(argv);
+  return require(".")(argv, spec);
 };

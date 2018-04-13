@@ -27,8 +27,8 @@ const hasNpmCI = makeNpmFeaturePredicate(">=5.7.0");
 
 module.exports = factory;
 
-function factory(argv) {
-  return new BootstrapCommand(argv);
+function factory(argv, spec) {
+  return new BootstrapCommand(argv, spec);
 }
 
 class BootstrapCommand extends Command {

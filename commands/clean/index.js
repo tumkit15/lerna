@@ -9,8 +9,8 @@ const PromptUtilities = require("@lerna/prompt");
 
 module.exports = factory;
 
-function factory(argv) {
-  return new CleanCommand(argv);
+function factory(argv, spec) {
+  return new CleanCommand(argv, spec);
 }
 
 class CleanCommand extends Command {

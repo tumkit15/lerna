@@ -9,8 +9,8 @@ const symlinkDependencies = require("@lerna/symlink-dependencies");
 
 module.exports = factory;
 
-function factory(argv) {
-  return new LinkCommand(argv);
+function factory(argv, spec) {
+  return new LinkCommand(argv, spec);
 }
 
 class LinkCommand extends Command {

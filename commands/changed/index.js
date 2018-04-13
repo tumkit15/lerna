@@ -8,8 +8,8 @@ const output = require("@lerna/output");
 
 module.exports = factory;
 
-function factory(argv) {
-  return new ChangedCommand(argv);
+function factory(argv, spec) {
+  return new ChangedCommand(argv, spec);
 }
 
 class ChangedCommand extends Command {

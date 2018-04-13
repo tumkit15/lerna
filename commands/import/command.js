@@ -1,5 +1,11 @@
 "use strict";
 
+const spec = {
+  dir: {},
+  flatten: {},
+  yes: {},
+};
+
 /**
  * @see https://github.com/yargs/yargs/blob/master/docs/advanced.md#providing-a-command-module
  */
@@ -24,5 +30,5 @@ exports.builder = yargs =>
     });
 
 exports.handler = function handler(argv) {
-  return require(".")(argv);
+  return require(".")(argv, spec);
 };

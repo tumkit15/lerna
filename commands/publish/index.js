@@ -41,8 +41,8 @@ const removeTempLicenses = require("./lib/remove-temp-licenses");
 
 module.exports = factory;
 
-function factory(argv) {
-  return new PublishCommand(argv);
+function factory(argv, spec) {
+  return new PublishCommand(argv, spec);
 }
 
 class PublishCommand extends Command {

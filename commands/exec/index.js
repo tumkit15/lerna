@@ -8,8 +8,8 @@ const ValidationError = require("@lerna/validation-error");
 
 module.exports = factory;
 
-function factory(argv) {
-  return new ExecCommand(argv);
+function factory(argv, spec) {
+  return new ExecCommand(argv, spec);
 }
 
 class ExecCommand extends Command {

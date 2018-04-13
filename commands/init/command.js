@@ -1,5 +1,10 @@
 "use strict";
 
+const spec = {
+  exact: {},
+  independent: {},
+};
+
 /**
  * @see https://github.com/yargs/yargs/blob/master/docs/advanced.md#providing-a-command-module
  */
@@ -20,5 +25,5 @@ exports.builder = {
 };
 
 exports.handler = function handler(argv) {
-  return require(".")(argv);
+  return require(".")(argv, spec);
 };

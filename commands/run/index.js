@@ -11,8 +11,8 @@ const ValidationError = require("@lerna/validation-error");
 
 module.exports = factory;
 
-function factory(argv) {
-  return new RunCommand(argv);
+function factory(argv, spec) {
+  return new RunCommand(argv, spec);
 }
 
 class RunCommand extends Command {

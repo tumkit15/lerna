@@ -2,6 +2,18 @@
 
 const filterable = require("@lerna/filter-options");
 
+const spec = Object.assign({}, filterable.spec, {
+  cmd: {},
+  args: {},
+  bail: {
+    default: true,
+  },
+  parallel: {},
+  prefix: {
+    default: true,
+  },
+});
+
 /**
  * @see https://github.com/yargs/yargs/blob/master/docs/advanced.md#providing-a-command-module
  */
@@ -52,5 +64,5 @@ exports.builder = yargs => {
 };
 
 exports.handler = function handler(argv) {
-  return require(".")(argv);
+  return require(".")(argv, spec);
 };

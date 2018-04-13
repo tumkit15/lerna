@@ -2,6 +2,19 @@
 
 const filterable = require("@lerna/filter-options");
 
+const spec = Object.assign({}, filterable.spec, {
+  hoist: {},
+  nohoist: {},
+  mutex: {},
+  "ignore-scripts": {},
+  ignoreScripts: "ignore-scripts",
+  "npm-client": {
+    default: "npm",
+  },
+  npmClient: "npm-client",
+  registry: {},
+});
+
 /**
  * @see https://github.com/yargs/yargs/blob/master/docs/advanced.md#providing-a-command-module
  */
@@ -19,7 +32,7 @@ exports.builder = yargs => {
       hoist: {
         group: "Command Options:",
         describe: "Install external dependencies matching [glob] to the repo root",
-        defaultDescription: "'**'",
+        defaultDescription: '"**"',
       },
       nohoist: {
         group: "Command Options:",
@@ -39,6 +52,7 @@ exports.builder = yargs => {
       "npm-client": {
         group: "Command Options:",
         describe: "Executable used to install dependencies (npm, yarn, pnpm, ...)",
+        defaultDescription: "npm",
         type: "string",
         requiresArg: true,
       },
@@ -54,5 +68,5 @@ exports.builder = yargs => {
 };
 
 exports.handler = function handler(argv) {
-  return require(".")(argv);
+  return require(".")(argv, spec);
 };

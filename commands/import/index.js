@@ -12,8 +12,8 @@ const ValidationError = require("@lerna/validation-error");
 
 module.exports = factory;
 
-function factory(argv) {
-  return new ImportCommand(argv);
+function factory(argv, spec) {
+  return new ImportCommand(argv, spec);
 }
 
 class ImportCommand extends Command {

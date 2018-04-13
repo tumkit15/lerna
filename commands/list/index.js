@@ -8,8 +8,8 @@ const output = require("@lerna/output");
 
 module.exports = factory;
 
-function factory(argv) {
-  return new ListCommand(argv);
+function factory(argv, spec) {
+  return new ListCommand(argv, spec);
 }
 
 class ListCommand extends Command {
