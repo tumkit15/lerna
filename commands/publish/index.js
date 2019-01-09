@@ -6,8 +6,6 @@ const crypto = require("crypto");
 const figgyPudding = require("figgy-pudding");
 const pFinally = require("p-finally");
 const pMap = require("p-map");
-const pPipe = require("p-pipe");
-const pReduce = require("p-reduce");
 const semver = require("semver");
 
 const Command = require("@lerna/command");
@@ -547,24 +545,17 @@ class PublishCommand extends Command {
     const { contents } = this.options;
     const getLocation = contents ? pkg => path.resolve(pkg.location, contents) : pkg => pkg.location;
 
-    const mapper = pPipe(
-      [
-        pkg =>
-          pulseTillDone(packDirectory(pkg, getLocation(pkg), this.config)).then(packed => {
-            tracker.verbose("packed", pkg.name, path.relative(this.project.rootPath, getLocation(pkg)));
-            tracker.completeWork(1);
+    const mapper = pkg =>
+      packDirectory(pkg, getLocation(pkg), this.config).then(packed => {
+        tracker.verbose("packed", pkg.name, path.relative(this.project.rootPath, getLocation(pkg)));
+        tracker.completeWork(1);
 
-            // store metadata for use in this.publishPacked()
-            pkg.packed = packed;
-
-            // manifest may be mutated by any previous lifecycle
-            return pkg.refresh();
-          }),
-      ].filter(Boolean)
-    );
+        // store metadata for use in this.publishPacked()
+        pkg.packed = packed;
+      });
 
     chain = chain.then(() =>
-      pReduce(this.batchedPackages, (_, batch) => pMap(batch, mapper, { concurrency: 10 }))
+      pulseTillDone(runParallelBatches(this.batchedPackages, this.concurrency * 2, mapper))
     );
 
     chain = chain.then(() => removeTempLicenses(this.packagesToBeLicensed));
@@ -584,27 +575,21 @@ class PublishCommand extends Command {
 
     let chain = Promise.resolve();
 
-    const mapper = pPipe(
-      [
-        pkg => {
-          // if we skip temp tags we should tag with the proper value immediately
-          const tag = this.tempTag ? "lerna-temp" : this.getDistTag(pkg);
+    const mapper = pkg => {
+      // if we skip temp tags we should tag with the proper value immediately
+      const tag = this.tempTag ? "lerna-temp" : this.getDistTag(pkg);
 
-          return pulseTillDone(npmPublish(pkg, pkg.packed.tarFilePath, this.config.concat({ tag }))).then(
-            () => {
-              tracker.success("published", pkg.name, pkg.version);
-              tracker.completeWork(1);
+      return npmPublish(pkg, pkg.packed.tarFilePath, this.config.concat({ tag })).then(() => {
+        tracker.success("published", pkg.name, pkg.version);
+        tracker.completeWork(1);
 
-              logPacked(pkg.packed);
+        logPacked(pkg.packed);
+      });
+    };
 
-              return pkg;
-            }
-          );
-        },
-      ].filter(Boolean)
+    chain = chain.then(() =>
+      pulseTillDone(runParallelBatches(this.batchedPackages, this.concurrency, mapper))
     );
-
-    chain = chain.then(() => runParallelBatches(this.batchedPackages, this.concurrency, mapper));
 
     // cyclical "publish" lifecycles are automatically skipped
     chain = chain.then(() => this.runRootLifecycle("publish"));
@@ -626,17 +611,17 @@ class PublishCommand extends Command {
       const distTag = this.getDistTag(pkg);
 
       return Promise.resolve()
-        .then(() => pulseTillDone(npmDistTag.remove(spec, "lerna-temp", this.config)))
-        .then(() => pulseTillDone(npmDistTag.add(spec, distTag, this.config)))
+        .then(() => npmDistTag.remove(spec, "lerna-temp", this.config))
+        .then(() => npmDistTag.add(spec, distTag, this.config))
         .then(() => {
           tracker.success("dist-tag", "%s@%s => %j", pkg.name, pkg.version, distTag);
           tracker.completeWork(1);
-
-          return pkg;
         });
     };
 
-    chain = chain.then(() => runParallelBatches(this.batchedPackages, this.concurrency, mapper));
+    chain = chain.then(() =>
+      pulseTillDone(runParallelBatches(this.batchedPackages, this.concurrency, mapper))
+    );
 
     return pFinally(chain, () => tracker.finish());
   }

@@ -62,8 +62,8 @@ describe("lifecycle scripts", () => {
 
     expect(loadJsonFile.registry).toMatchInlineSnapshot(`
 Map {
-  "/packages/package-1" => 4,
-  "/packages/package-2" => 4,
+  "/packages/package-1" => 3,
+  "/packages/package-2" => 3,
 }
 `);
   });
