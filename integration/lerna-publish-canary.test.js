@@ -22,7 +22,7 @@ const env = {
 
 test("lerna publish --canary uses default prerelease id", async () => {
   const { cwd } = await cloneFixture("normal");
-  const args = ["publish", "--canary", "--yes"];
+  const args = ["publish", "--canary", "--yes", "--no-temp-tag"];
 
   await gitTag(cwd, "v1.0.0");
   await commitChangeToPackage(cwd, "package-1", "change", { change: true });
@@ -44,7 +44,7 @@ Successfully published:
 
 test("lerna publish --canary --no-git-reset leaves the working tree dirty", async () => {
   const { cwd } = await cloneFixture("normal");
-  const args = ["publish", "--canary", "--yes", "--no-git-reset"];
+  const args = ["publish", "--canary", "--yes", "--no-temp-tag", "--no-git-reset"];
 
   await gitTag(cwd, "v1.0.0");
   await commitChangeToPackage(cwd, "package-1", "change", { change: true });

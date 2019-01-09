@@ -23,7 +23,7 @@ const env = {
 
 test(`lerna publish --conventional-commits independent changelog`, async () => {
   const { cwd } = await cloneFixture("independent", "feat(*): init repo");
-  const args = ["publish", "--conventional-commits", "--yes"];
+  const args = ["publish", "--conventional-commits", "--yes", "--no-temp-tag"];
 
   await commitChangeToPackage(cwd, "package-1", "feat(package-1): Add foo", { foo: true });
   await commitChangeToPackage(cwd, "package-1", "fix(package-1): Fix foo", { foo: false });

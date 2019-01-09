@@ -22,7 +22,7 @@ const env = {
 
 test("lerna publish updates all transitive dependents", async () => {
   const { cwd } = await cloneFixture("snake-graph");
-  const args = ["publish", "major", "--yes"];
+  const args = ["publish", "major", "--yes", "--no-temp-tag"];
 
   await gitTag(cwd, "v1.0.0");
   await commitChangeToPackage(cwd, "package-1", "change", { change: true });

@@ -23,7 +23,7 @@ test("lerna publish from-git handles custom tags", async () => {
 
   await gitTag(cwd, "some-unrelated-tag");
 
-  const args = ["publish", "--yes", "from-git"];
+  const args = ["publish", "--yes", "--no-temp-tag", "from-git"];
 
   const { stderr } = await cliRunner(cwd, env)(...args);
   expect(stderr).toMatch("lerna notice from-git No tagged release found");

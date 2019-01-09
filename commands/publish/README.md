@@ -47,10 +47,10 @@ This is useful when a previous `lerna publish` failed to publish all packages to
 - [`--contents <dir>`](#--contents-dir)
 - [`--dist-tag <tag>`](#--dist-tag-tag)
 - [`--no-git-reset`](#--no-git-reset)
+- [`--no-temp-tag`](#--no-temp-tag)
 - [`--no-verify-access`](#--no-verify-access)
 - [`--preid`](#--preid)
 - [`--registry <url>`](#--registry-url)
-- [`--temp-tag`](#--temp-tag)
 - [`--yes`](#--yes)
 
 ### `--canary`
@@ -109,6 +109,14 @@ To avoid this, pass `--no-git-reset`. This can be especially useful when used as
 lerna publish --no-git-reset
 ```
 
+### `--no-temp-tag`
+
+By default, `lerna publish` first publishes all changed packages to a temporary dist-tag (`lerna-temp`)
+and then after all are successful moves the new version(s) to the dist-tag configured by [`--dist-tag`](#--dist-tag-tag) (default `latest`).
+This is intended to help avoid "partial" releases (due to network, authentication, or other failure) corrupting consumer installs with conflicting metadata.
+
+If you do not need this insurance, pass `--no-temp-tag` (or set `command.publish.tempTag` to `false` in lerna.json) to disable this behavior.
+
 ### `--no-verify-access`
 
 By default, `lerna` will verify the logged-in npm user's access to the packages about to be published. Passing this flag will disable that check.
@@ -141,15 +149,6 @@ When run with this flag, forwarded npm commands will use the specified registry 
 This is useful if you do not want to explicitly set up your registry
 configuration in all of your package.json files individually when e.g. using
 private registries.
-
-### `--temp-tag`
-
-When passed, this flag will alter the default publish process by first publishing
-all changed packages to a temporary dist-tag (`lerna-temp`) and then moving the
-new version(s) to the dist-tag configured by [`--dist-tag`](#--dist-tag-tag) (default `latest`).
-
-This is not generally necessary, as Lerna will publish packages in topological
-order (all dependencies before dependents) by default.
 
 ### `--yes`
 

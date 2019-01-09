@@ -3,6 +3,7 @@
 const os = require("os");
 const path = require("path");
 const crypto = require("crypto");
+const figgyPudding = require("figgy-pudding");
 const pFinally = require("p-finally");
 const pMap = require("p-map");
 const pPipe = require("p-pipe");
@@ -44,6 +45,23 @@ function factory(argv) {
   return new PublishCommand(argv);
 }
 
+const PublishConfig = figgyPudding(
+  {
+    registry: {
+      default: "https://registry.npmjs.org/",
+    },
+    tag: {
+      default: "latest",
+    },
+  },
+  {
+    other() {
+      // open it up for the sake of tests
+      return true;
+    },
+  }
+);
+
 class PublishCommand extends Command {
   get otherCommandConfigs() {
     // back-compat
@@ -74,6 +92,7 @@ class PublishCommand extends Command {
 
     // inverted boolean options are only respected if prefixed with `--no-`, e.g. `--no-verify-access`
     this.gitReset = this.options.gitReset !== false;
+    this.tempTag = this.options.tempTag !== false;
     this.verifyAccess = this.options.verifyAccess !== false;
 
     // npmSession and user-agent are consumed by libnpm/fetch (via libnpm/publish)
@@ -85,28 +104,31 @@ class PublishCommand extends Command {
     this.logger.verbose("session", npmSession);
     this.logger.verbose("user-agent", userAgent);
 
-    this.conf = npmConf({
+    const conf = npmConf({
       lernaCommand: "publish",
       npmSession,
       npmVersion: userAgent,
       registry: this.options.registry,
     });
 
-    this.conf.set("user-agent", userAgent, "cli");
+    conf.set("user-agent", userAgent, "cli");
 
-    if (this.conf.get("registry") === "https://registry.yarnpkg.com") {
+    if (conf.get("registry") === "https://registry.yarnpkg.com") {
       this.logger.warn("", "Yarn's registry proxy is broken, replacing with public npm registry");
       this.logger.warn("", "If you don't have an npm token, you should exit and run `npm login`");
 
-      this.conf.set("registry", "https://registry.npmjs.org/", "cli");
+      conf.set("registry", "https://registry.npmjs.org/", "cli");
     }
 
     // inject --dist-tag into opts, if present
-    const distTag = this.getDistTag();
-
-    if (distTag) {
-      this.conf.set("tag", distTag.trim(), "cli");
+    if (this.options.distTag) {
+      conf.set("tag", this.options.distTag.trim(), "cli");
+    } else if (this.options.canary) {
+      conf.set("tag", "canary", "cli");
     }
+
+    // store figgy config
+    this.config = PublishConfig(conf.snapshot);
 
     this.runPackageLifecycle = createRunner(this.options);
 
@@ -185,7 +207,7 @@ class PublishCommand extends Command {
       chain = chain.then(() => this.resetChanges());
     }
 
-    if (this.options.tempTag) {
+    if (this.tempTag) {
       chain = chain.then(() => this.npmUpdateAsLatest());
     }
 
@@ -255,7 +277,7 @@ class PublishCommand extends Command {
   detectFromPackage() {
     let chain = Promise.resolve();
 
-    chain = chain.then(() => getUnpublishedPackages(this.packageGraph, this.conf.snapshot));
+    chain = chain.then(() => getUnpublishedPackages(this.packageGraph, this.config));
     chain = chain.then(unpublished => {
       if (!unpublished.length) {
         this.logger.notice("from-package", "No unpublished release found");
@@ -395,7 +417,7 @@ class PublishCommand extends Command {
   prepareRegistryActions() {
     let chain = Promise.resolve();
 
-    if (this.conf.get("registry") !== "https://registry.npmjs.org/") {
+    if (this.config.registry !== "https://registry.npmjs.org/") {
       this.logger.notice("", "Skipping all user and access validation due to third-party registry");
       this.logger.notice("", "Make sure you're authenticated properly ¯\\_(ツ)_/¯");
 
@@ -410,11 +432,11 @@ class PublishCommand extends Command {
     if (this.verifyAccess) {
       // validate user has valid npm credentials first,
       // by far the most common form of failed execution
-      chain = chain.then(() => getNpmUsername(this.conf.snapshot));
+      chain = chain.then(() => getNpmUsername(this.config));
       chain = chain.then(username => {
         // if no username was retrieved, don't bother validating
         if (username) {
-          return verifyNpmPackageAccess(this.packagesToPublish, username, this.conf.snapshot);
+          return verifyNpmPackageAccess(this.packagesToPublish, username, this.config);
         }
       });
     }
@@ -525,11 +547,10 @@ class PublishCommand extends Command {
     const { contents } = this.options;
     const getLocation = contents ? pkg => path.resolve(pkg.location, contents) : pkg => pkg.location;
 
-    const opts = this.conf.snapshot;
     const mapper = pPipe(
       [
         pkg =>
-          pulseTillDone(packDirectory(pkg, getLocation(pkg), opts)).then(packed => {
+          pulseTillDone(packDirectory(pkg, getLocation(pkg), this.config)).then(packed => {
             tracker.verbose("packed", pkg.name, path.relative(this.project.rootPath, getLocation(pkg)));
             tracker.completeWork(1);
 
@@ -563,23 +584,23 @@ class PublishCommand extends Command {
 
     let chain = Promise.resolve();
 
-    const opts = Object.assign(this.conf.snapshot, {
-      // distTag defaults to "latest" OR whatever is in pkg.publishConfig.tag
-      // if we skip temp tags we should tag with the proper value immediately
-      tag: this.options.tempTag ? "lerna-temp" : this.conf.get("tag"),
-    });
-
     const mapper = pPipe(
       [
-        pkg =>
-          pulseTillDone(npmPublish(pkg, pkg.packed.tarFilePath, opts)).then(() => {
-            tracker.success("published", pkg.name, pkg.version);
-            tracker.completeWork(1);
+        pkg => {
+          // if we skip temp tags we should tag with the proper value immediately
+          const tag = this.tempTag ? "lerna-temp" : this.getDistTag(pkg);
 
-            logPacked(pkg.packed);
+          return pulseTillDone(npmPublish(pkg, pkg.packed.tarFilePath, this.config.concat({ tag }))).then(
+            () => {
+              tracker.success("published", pkg.name, pkg.version);
+              tracker.completeWork(1);
 
-            return pkg;
-          }),
+              logPacked(pkg.packed);
+
+              return pkg;
+            }
+          );
+        },
       ].filter(Boolean)
     );
 
@@ -600,21 +621,13 @@ class PublishCommand extends Command {
 
     let chain = Promise.resolve();
 
-    const opts = this.conf.snapshot;
-    const getDistTag = publishConfig => {
-      if (opts.tag === "latest" && publishConfig && publishConfig.tag) {
-        return publishConfig.tag;
-      }
-
-      return opts.tag;
-    };
     const mapper = pkg => {
       const spec = `${pkg.name}@${pkg.version}`;
-      const distTag = getDistTag(pkg.get("publishConfig"));
+      const distTag = this.getDistTag(pkg);
 
       return Promise.resolve()
-        .then(() => pulseTillDone(npmDistTag.remove(spec, "lerna-temp", opts)))
-        .then(() => pulseTillDone(npmDistTag.add(spec, distTag, opts)))
+        .then(() => pulseTillDone(npmDistTag.remove(spec, "lerna-temp", this.config)))
+        .then(() => pulseTillDone(npmDistTag.add(spec, distTag, this.config)))
         .then(() => {
           tracker.success("dist-tag", "%s@%s => %j", pkg.name, pkg.version, distTag);
           tracker.completeWork(1);
@@ -628,16 +641,15 @@ class PublishCommand extends Command {
     return pFinally(chain, () => tracker.finish());
   }
 
-  getDistTag() {
-    if (this.options.distTag) {
-      return this.options.distTag;
+  // distTag defaults to "latest" OR whatever is in pkg.publishConfig.tag
+  getDistTag(pkg) {
+    const publishConfig = pkg.get("publishConfig");
+
+    if (this.config.tag === "latest" && publishConfig && publishConfig.tag) {
+      return publishConfig.tag;
     }
 
-    if (this.options.canary) {
-      return "canary";
-    }
-
-    // undefined defaults to "latest" OR whatever is in pkg.publishConfig.tag
+    return this.config.tag;
   }
 }
 

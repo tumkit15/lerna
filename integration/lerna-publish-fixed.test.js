@@ -20,7 +20,7 @@ const env = {
 
 test("lerna publish updates fixed versions", async () => {
   const { cwd } = await cloneFixture("normal");
-  const args = ["publish", "patch", "--yes"];
+  const args = ["publish", "patch", "--yes", "--no-temp-tag"];
 
   const { stdout } = await cliRunner(cwd, env)(...args);
   expect(stdout).toMatchInlineSnapshot(`

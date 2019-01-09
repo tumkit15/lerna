@@ -16,7 +16,7 @@ const env = {
 
 test("lerna publish lifecycle scripts", async () => {
   const { cwd } = await cloneFixture("lifecycle");
-  const args = ["publish", "minor", "--yes"];
+  const args = ["publish", "minor", "--yes", "--no-temp-tag"];
 
   const { stdout } = await cliRunner(cwd, env)(...args);
   expect(stdout).toMatchInlineSnapshot(`

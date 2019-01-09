@@ -26,7 +26,7 @@ test("lerna publish replaces file: specifier with local version before npm publi
   await gitTag(cwd, "v1.0.0");
   await commitChangeToPackage(cwd, "package-1", "feat(package-1): changed", { changed: true });
 
-  await cliRunner(cwd, env)("publish", "major", "--yes");
+  await cliRunner(cwd, env)("publish", "major", "--yes", "--no-temp-tag");
 
   const patch = await showCommit(cwd);
   expect(patch).toMatchInlineSnapshot(`
