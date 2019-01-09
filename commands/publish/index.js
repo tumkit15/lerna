@@ -10,6 +10,7 @@ const pReduce = require("p-reduce");
 const semver = require("semver");
 
 const Command = require("@lerna/command");
+const ValidationError = require("@lerna/validation-error");
 const describeRef = require("@lerna/describe-ref");
 const checkWorkingTree = require("@lerna/check-working-tree");
 const PromptUtilities = require("@lerna/prompt");
@@ -62,7 +63,10 @@ class PublishCommand extends Command {
     }
 
     if (this.options.requireScripts) {
-      this.logger.info("require-scripts", "enabled");
+      throw new ValidationError(
+        "removed",
+        "--require-scripts has been removed.\nExecute these scripts from the appropriate package lifecycle."
+      );
     }
 
     // https://docs.npmjs.com/misc/config#save-prefix
@@ -484,19 +488,6 @@ class PublishCommand extends Command {
     return gitCheckout(dirtyManifests, this.execOpts);
   }
 
-  execScript(pkg, script) {
-    const scriptLocation = path.join(pkg.location, "scripts", script);
-
-    try {
-      // eslint-disable-next-line import/no-dynamic-require, global-require
-      require(scriptLocation);
-    } catch (ex) {
-      this.logger.silly("execScript", `No ${script} script found at ${scriptLocation}`);
-    }
-
-    return pkg;
-  }
-
   removeTempLicensesOnError(error) {
     return Promise.resolve()
       .then(() =>
@@ -537,8 +528,6 @@ class PublishCommand extends Command {
     const opts = this.conf.snapshot;
     const mapper = pPipe(
       [
-        this.options.requireScripts && (pkg => this.execScript(pkg, "prepublish")),
-
         pkg =>
           pulseTillDone(packDirectory(pkg, getLocation(pkg), opts)).then(packed => {
             tracker.verbose("packed", pkg.name, path.relative(this.project.rootPath, getLocation(pkg)));
@@ -591,8 +580,6 @@ class PublishCommand extends Command {
 
             return pkg;
           }),
-
-        this.options.requireScripts && (pkg => this.execScript(pkg, "postpublish")),
       ].filter(Boolean)
     );
 

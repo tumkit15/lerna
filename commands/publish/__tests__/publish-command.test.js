@@ -63,6 +63,17 @@ describe("PublishCommand", () => {
       });
     });
 
+    it("exits non-zero with --require-scripts", async () => {
+      try {
+        await lernaPublish(cwd)("--require-scripts");
+      } catch (err) {
+        expect(err.name).toBe("ValidationError");
+        expect(err.message).toMatch("--require-scripts has been removed.");
+      }
+
+      expect.assertions(2);
+    });
+
     it("exits non-zero with --scope", async () => {
       try {
         await lernaPublish(cwd)("--scope", "package-1");
