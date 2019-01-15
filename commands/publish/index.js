@@ -68,9 +68,9 @@ class PublishCommand extends Command {
     // https://docs.npmjs.com/misc/config#save-prefix
     this.savePrefix = this.options.exact ? "" : "^";
 
-    // inverted boolean options are only respected if prefixed with `--no-`, e.g. `--no-verify-access`
+    // inverted boolean options are only respected if prefixed with `--no-`, e.g. `--no-verify`
     this.gitReset = this.options.gitReset !== false;
-    this.verifyAccess = this.options.verifyAccess !== false;
+    this.verify = this.options.verify !== false;
 
     // npmSession and user-agent are consumed by libnpm/fetch (via libnpm/publish)
     const npmSession = crypto.randomBytes(8).toString("hex");
@@ -403,7 +403,7 @@ class PublishCommand extends Command {
       return chain;
     }
 
-    if (this.verifyAccess) {
+    if (this.verify) {
       // validate user has valid npm credentials first,
       // by far the most common form of failed execution
       chain = chain.then(() => getNpmUsername(this.conf.snapshot));

@@ -6,6 +6,7 @@ const path = require("path");
 
 module.exports = compose(
   // add new predicates HERE
+  remap("command.publish.verifyAccess", "command.publish.verify", { alsoRoot: true }),
   remap("command.publish.npmTag", "command.publish.distTag", { alsoRoot: true }),
   remap("command.publish.cdVersion", "command.publish.bump", { alsoRoot: true }),
   remap("command.publish.ignore", "command.publish.ignoreChanges"),
