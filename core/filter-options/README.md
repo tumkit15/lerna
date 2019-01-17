@@ -4,16 +4,16 @@
 
 ## Options
 
-### `--scope <glob>`
+### `--include <glob>`
 
 Include only packages with names matching the given glob.
 
 ```sh
-$ lerna exec --scope my-component -- ls -la
-$ lerna run --scope toolbar-* test
+$ lerna exec --include my-component -- ls -la
+$ lerna run --include toolbar-* test
 ```
 
-### `--ignore <glob>`
+### `--exclude <glob>`
 
 Exclude packages with names matching the given glob.
 
@@ -40,28 +40,28 @@ _This can be particularly useful when used in CI, if you can obtain the target b
 
 ### `--include-filtered-dependents`
 
-Include all transitive dependents when running a command regardless of `--scope`, `--ignore`, or `--since`.
+Include all transitive dependents when running a command regardless of `--include`, `--exclude`, or `--since`.
 
 ### `--include-filtered-dependencies`
 
-Include all transitive dependencies when running a command regardless of `--scope`, `--ignore`, or `--since`.
+Include all transitive dependencies when running a command regardless of `--include`, `--exclude`, or `--since`.
 
-Used in combination with any command that accepts `--scope` (`bootstrap`, `clean`, `ls`, `run`, `exec`).
-Ensures that all dependencies (and dev dependencies) of any scoped packages (either through `--scope` or `--ignore`) are operated on as well.
+Used in combination with any command that accepts `--include` (`bootstrap`, `clean`, `ls`, `run`, `exec`).
+Ensures that all dependencies (and dev dependencies) of any filtered packages (either through `--include` or `--exclude`) are operated on as well.
 
-> Note: This will override the `--scope` and `--ignore` flags.
+> Note: This will override the `--include` and `--exclude` flags.
 >
-> > i.e. A package matched by the `--ignore` flag will still be bootstrapped if it is depended on by another package that is being bootstrapped.
+> > i.e. A package matched by the `--exclude` flag will still be bootstrapped if it is depended on by another package that is being bootstrapped.
 
 This is useful for situations where you want to "set up" a single package that relies on other packages being set up.
 
 ```sh
-$ lerna bootstrap --scope my-component --include-filtered-dependencies
+$ lerna bootstrap --include my-component --include-filtered-dependencies
 # my-component and all of its dependencies will be bootstrapped
 ```
 
 ```sh
-$ lerna bootstrap --scope "package-*" --ignore "package-util-*" --include-filtered-dependencies
+$ lerna bootstrap --include "package-*" --exclude "package-util-*" --include-filtered-dependencies
 # all packages matching "package-util-*" will be ignored unless they are
 # depended upon by a package whose name matches "package-*"
 ```

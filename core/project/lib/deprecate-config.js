@@ -6,6 +6,14 @@ const path = require("path");
 
 module.exports = compose(
   // add new predicates HERE
+  remap("command.bootstrap.includeFilteredDependencies", "command.bootstrap.withDependencies", {
+    alsoRoot: true,
+  }),
+  remap("command.bootstrap.includeFilteredDependents", "command.bootstrap.withDependents", {
+    alsoRoot: true,
+  }),
+  remap("command.bootstrap.scope", "command.bootstrap.include"),
+  remap("command.bootstrap.ignore", "command.bootstrap.exclude"),
   remap("command.publish.npmTag", "command.publish.distTag", { alsoRoot: true }),
   remap("command.publish.cdVersion", "command.publish.bump", { alsoRoot: true }),
   remap("command.publish.ignore", "command.publish.ignoreChanges"),

@@ -135,23 +135,23 @@ class BootstrapCommand extends Command {
     let chain = Promise.resolve();
 
     chain = chain.then(() => {
-      if (this.options.scope) {
-        this.logger.notice("filter", "including %j", this.options.scope);
+      if (this.options.include) {
+        this.logger.notice("filter", "including %j", this.options.include);
       }
 
-      if (this.options.ignore) {
-        this.logger.notice("filter", "excluding %j", this.options.ignore);
+      if (this.options.exclude) {
+        this.logger.notice("filter", "excluding %j", this.options.exclude);
       }
 
       if (this.options.since) {
         this.logger.notice("filter", "changed since %j", this.options.since);
       }
 
-      if (this.options.includeFilteredDependents) {
+      if (this.options.withDependents) {
         this.logger.notice("filter", "including filtered dependents");
       }
 
-      if (this.options.includeFilteredDependencies) {
+      if (this.options.withDependencies) {
         this.logger.notice("filter", "including filtered dependencies");
       }
 
@@ -164,7 +164,7 @@ class BootstrapCommand extends Command {
       if (filteredPackages.length !== this.targetGraph.size) {
         this.logger.warn("bootstrap", "Installing local packages that do not match filters from registry");
 
-        // an explicit --scope, --ignore, or --since should only symlink the targeted packages, no others
+        // an explicit --include, --exclude, or --since should only symlink the targeted packages, no others
         this.targetGraph = new PackageGraph(filteredPackages, "allDependencies", this.options.forceLocal);
 
         // never automatically --save or modify lockfiles

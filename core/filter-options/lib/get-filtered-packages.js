@@ -9,7 +9,7 @@ function getFilteredPackages(packageGraph, execOpts, options) {
   let chain = Promise.resolve();
 
   chain = chain.then(() =>
-    filterPackages(packageGraph.rawPackageList, options.scope, options.ignore, options.private)
+    filterPackages(packageGraph.rawPackageList, options.include, options.exclude, options.private)
   );
 
   if (options.since !== undefined) {
@@ -22,11 +22,11 @@ function getFilteredPackages(packageGraph, execOpts, options) {
     );
   }
 
-  if (options.includeFilteredDependents) {
+  if (options.withDependents) {
     chain = chain.then(filteredPackages => packageGraph.addDependents(filteredPackages));
   }
 
-  if (options.includeFilteredDependencies) {
+  if (options.withDependencies) {
     chain = chain.then(filteredPackages => packageGraph.addDependencies(filteredPackages));
   }
 

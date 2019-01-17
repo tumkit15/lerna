@@ -27,11 +27,11 @@ function parseOptions(...args) {
   return filterOptions(yargs()).parse(args);
 }
 
-test("--scope filters packages by glob", async () => {
+test("--include filters packages by glob", async () => {
   const cwd = await initFixture("filtering");
   const packageGraph = await buildGraph(cwd);
   const execOpts = { cwd };
-  const options = parseOptions("--scope", "package-2", "--scope", "*-4");
+  const options = parseOptions("--include", "package-2", "--include", "*-4");
 
   const result = await getFilteredPackages(packageGraph, execOpts, options);
 
@@ -97,11 +97,11 @@ test("--since <ref> should return packages updated since <ref>", async () => {
   expect(result[1].name).toBe("package-3");
 });
 
-test("--scope package-{2,3,4} --since master", async () => {
+test("--include package-{2,3,4} --since master", async () => {
   const cwd = await initFixture("filtering");
   const packageGraph = await buildGraph(cwd);
   const execOpts = { cwd };
-  const options = parseOptions("--scope", "package-{2,3,4}", "--since", "master");
+  const options = parseOptions("--include", "package-{2,3,4}", "--since", "master");
 
   await execa("git", ["checkout", "-b", "test"], execOpts);
   await touch(path.join(cwd, "packages/package-4/random-file"));
@@ -114,22 +114,30 @@ test("--scope package-{2,3,4} --since master", async () => {
   expect(result[0].name).toBe("package-4");
 });
 
-test("--include-filtered-dependents", async () => {
+test.each`
+  flag
+  ${"--with-dependents"}
+  ${"--include-filtered-dependents"}
+`("$flag extends list to dependents", async ({ flag }) => {
   const cwd = await initFixture("filtering");
   const packageGraph = await buildGraph(cwd);
   const execOpts = { cwd };
-  const options = parseOptions("--scope", "package-1", "--include-filtered-dependents");
+  const options = parseOptions("--include", "package-1", flag);
 
   const result = await getFilteredPackages(packageGraph, execOpts, options);
 
   expect(result.map(pkg => pkg.name)).toEqual(["package-1", "package-2", "package-5", "package-3"]);
 });
 
-test("--include-filtered-dependencies", async () => {
+test.each`
+  flag
+  ${"--with-dependencies"}
+  ${"--include-filtered-dependencies"}
+`("$flag extends list to dependencies", async ({ flag }) => {
   const cwd = await initFixture("filtering");
   const packageGraph = await buildGraph(cwd);
   const execOpts = { cwd };
-  const options = parseOptions("--scope", "package-3", "--include-filtered-dependencies");
+  const options = parseOptions("--include", "package-3", flag);
 
   const result = await getFilteredPackages(packageGraph, execOpts, options);
 

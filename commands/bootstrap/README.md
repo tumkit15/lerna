@@ -18,7 +18,7 @@ When run, this command will:
 3. `npm run prepublish` in all bootstrapped packages (unless `--ignore-prepublish` is passed).
 4. `npm run prepare` in all bootstrapped packages.
 
-`lerna bootstrap` respects the `--ignore`, `--scope` and `--include-filtered-dependencies` flags (see [Filter Flags](https://www.npmjs.com/package/@lerna/filter-options)).
+`lerna bootstrap` respects the `--exclude`, `--include` and `--with-dependencies` flags (see [Filter Flags](https://www.npmjs.com/package/@lerna/filter-options)).
 
 Pass extra arguments to npm client by placing them after `--`:
 
@@ -63,13 +63,13 @@ can be used to opt out of hoisting for certain dependencies.
 $ lerna bootstrap --hoist --nohoist=babel-*
 ```
 
-### --ignore
+### --exclude
 
 ```sh
-$ lerna bootstrap --ignore component-*
+$ lerna bootstrap --exclude component-*
 ```
 
-The `--ignore` flag, when used with the `bootstrap` command, can also be set in `lerna.json` under the `command.bootstrap.ignore` key. The command-line flag will take precedence over this option.
+The `--exclude` flag, when used with the `bootstrap` command, can also be set in `lerna.json` under the `command.bootstrap.exclude` key. The command-line flag will take precedence over this option.
 
 **Example**
 
@@ -78,7 +78,7 @@ The `--ignore` flag, when used with the `bootstrap` command, can also be set in 
   "version": "0.0.0",
   "command": {
     "bootstrap": {
-      "ignore": "component-*"
+      "exclude": "component-*"
     }
   }
 }

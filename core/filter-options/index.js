@@ -9,11 +9,11 @@ module.exports.getFilteredPackages = getFilteredPackages;
 function filterOptions(yargs) {
   // Only for 'run', 'exec', 'clean', 'ls', and 'bootstrap' commands
   const opts = {
-    scope: {
+    include: {
       describe: "Include only packages with names matching the given glob.",
       type: "string",
     },
-    ignore: {
+    exclude: {
       describe: "Exclude packages with names matching the given glob.",
       type: "string",
     },
@@ -33,21 +33,73 @@ function filterOptions(yargs) {
       `,
       type: "string",
     },
-    "include-filtered-dependents": {
+    "with-dependents": {
       describe: dedent`
-        Include all transitive dependents when running a command
-        regardless of --scope, --ignore, or --since.
+        Include all transitive dependents regardless of --include, --exclude, or --since.
       `,
       type: "boolean",
     },
-    "include-filtered-dependencies": {
+    "with-dependencies": {
       describe: dedent`
-        Include all transitive dependencies when running a command
-        regardless of --scope, --ignore, or --since.
+        Include all transitive dependencies regardless of --include, --exclude, or --since.
       `,
       type: "boolean",
     },
   };
 
-  return yargs.options(opts).group(Object.keys(opts), "Filter Options:");
+  return yargs
+    .options(opts)
+    .group(Object.keys(opts), "Filter Options:")
+    .options({
+      // back-compat
+      scope: {
+        hidden: true,
+        conflicts: "include",
+        type: "string",
+      },
+      ignore: {
+        hidden: true,
+        conflicts: "exclude",
+        type: "string",
+      },
+      "include-filtered-dependents": {
+        hidden: true,
+        conflicts: "with-dependents",
+        type: "boolean",
+      },
+      "include-filtered-dependencies": {
+        hidden: true,
+        conflicts: "with-dependencies",
+        type: "boolean",
+      },
+    })
+    .check(argv => {
+      /* eslint-disable no-param-reassign */
+      if (argv.scope) {
+        argv.include = [].concat(argv.scope);
+        delete argv.scope;
+      }
+
+      if (argv.ignore) {
+        argv.exclude = [].concat(argv.ignore);
+        delete argv.ignore;
+      }
+
+      if (argv.includeFilteredDependents) {
+        argv.withDependents = true;
+        argv["with-dependents"] = true;
+        delete argv.includeFilteredDependents;
+        delete argv["include-filtered-dependents"];
+      }
+
+      if (argv.includeFilteredDependencies) {
+        argv.withDependencies = true;
+        argv["with-dependencies"] = true;
+        delete argv.includeFilteredDependencies;
+        delete argv["include-filtered-dependencies"];
+      }
+      /* eslint-enable no-param-reassign */
+
+      return argv;
+    });
 }
