@@ -139,7 +139,7 @@ class PublishCommand extends Command {
       this.batchedPackages = this.toposort
         ? batchPackages(
             this.packagesToPublish,
-            this.options.rejectCycles,
+            !this.options.allowCycles,
             // Don't sort based on devDependencies because that
             // would increase the chance of dependency cycles
             // causing less-than-ideal a publishing order.

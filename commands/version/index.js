@@ -365,7 +365,7 @@ class VersionCommand extends Command {
 
   setBatchUpdates() {
     this.packagesToVersion = this.updates.map(({ pkg }) => pkg);
-    this.batchedPackages = batchPackages(this.packagesToVersion, this.options.rejectCycles);
+    this.batchedPackages = batchPackages(this.packagesToVersion, !this.options.allowCycles);
   }
 
   confirmVersions() {

@@ -17,6 +17,7 @@ const hasNpmVersion = require("@lerna/has-npm-version");
 
 // helpers
 const initFixture = require("@lerna-test/init-fixture")(__dirname);
+const loggingOutput = require("@lerna-test/logging-output");
 const normalizeRelativeDir = require("@lerna-test/normalize-relative-dir");
 const updateLernaConfig = require("@lerna-test/update-lerna-config");
 
@@ -615,13 +616,22 @@ describe("BootstrapCommand", () => {
   });
 
   describe("in a cyclical repo", () => {
-    it("should throw an error with --reject-cycles", async () => {
+    it("warns when cycles are encountered with --allow-cycles", async () => {
+      const testDir = await initFixture("toposort");
+
+      await lernaBootstrap(testDir)("--allow-cycles");
+
+      const [logMessage] = loggingOutput("warn");
+      expect(logMessage).toMatch("Dependency cycles detected, you should fix these!");
+    });
+
+    it("errors by default", async () => {
       expect.assertions(1);
 
       const testDir = await initFixture("toposort");
 
       try {
-        await lernaBootstrap(testDir)("--reject-cycles");
+        await lernaBootstrap(testDir)();
       } catch (err) {
         expect(err.message).toMatch("Dependency cycles detected, you should fix these!");
       }

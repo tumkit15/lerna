@@ -397,7 +397,28 @@ Map {
   });
 
   describe("in a cyclical repo", () => {
-    it("should throw an error with --reject-cycles", async () => {
+    it("warns when cycles are encountered with --allow-cycles", async () => {
+      const testDir = await initFixture("toposort");
+
+      await lernaPublish(testDir)("--allow-cycles");
+
+      const [logMessage] = loggingOutput("warn");
+      expect(logMessage).toMatch("Dependency cycles detected, you should fix these!");
+    });
+
+    it("errors by default", async () => {
+      expect.assertions(1);
+
+      const testDir = await initFixture("toposort");
+
+      try {
+        await lernaPublish(testDir)();
+      } catch (err) {
+        expect(err.message).toMatch("Dependency cycles detected, you should fix these!");
+      }
+    });
+
+    it("accepts backward-compatible --reject-cycles", async () => {
       expect.assertions(1);
 
       try {

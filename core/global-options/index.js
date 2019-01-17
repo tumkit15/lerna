@@ -16,8 +16,13 @@ function globalOptions(yargs) {
       type: "number",
       requiresArg: true,
     },
+    "allow-cycles": {
+      describe: "Do not fail if a cycle is detected among dependencies.",
+      type: "boolean",
+    },
     "reject-cycles": {
-      describe: "Fail if a cycle is detected among dependencies.",
+      // back-compat
+      hidden: true,
       type: "boolean",
     },
     "no-progress": {
