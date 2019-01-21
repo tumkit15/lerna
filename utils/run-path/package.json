@@ -1,0 +1,32 @@
+{
+  "name": "@lerna/run-path",
+  "version": "3.10.6",
+  "description": "Like npm-run-path, but for Lerna",
+  "keywords": [
+    "lerna",
+    "utils",
+    "npm-run-path",
+    "path",
+    "npm run"
+  ],
+  "author": "Daniel Stockman <daniel.stockman@gmail.com>",
+  "homepage": "https://github.com/lerna/lerna/tree/master/utils/run-path#readme",
+  "license": "MIT",
+  "main": "lib/run-path.js",
+  "files": [
+    "lib"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lerna/lerna.git"
+  },
+  "scripts": {
+    "test": "echo \"Error: run tests from root\" && exit 1"
+  },
+  "dependencies": {
+    "path-key": "^2.0.1"
+  }
+}
