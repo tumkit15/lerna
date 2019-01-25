@@ -12,6 +12,9 @@
   "homepage": "https://github.com/lerna/lerna/tree/master/utils/get-packed#readme",
   "license": "MIT",
   "main": "lib/get-packed.js",
+  "engines": {
+    "node": ">= 8.9.0"
+  },
   "files": [
     "lib"
   ],
