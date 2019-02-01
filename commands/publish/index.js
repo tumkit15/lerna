@@ -49,7 +49,7 @@ class PublishCommand extends Command {
     return ["version"];
   }
 
-  initialize() {
+  async initialize() {
     if (this.options.skipNpm) {
       // TODO: remove in next major release
       this.logger.warn("deprecated", "Instead of --skip-npm, call `lerna version` directly");
@@ -113,87 +113,80 @@ class PublishCommand extends Command {
         }
       : stage => this.runPackageLifecycle(this.project.manifest, stage);
 
-    let chain = Promise.resolve();
-
     // attempting to publish a release with local changes is not allowed
-    chain = chain.then(() => this.verifyWorkingTreeClean());
-    chain = chain.then(() => this.findVersionedUpdates());
+    await this.verifyWorkingTreeClean();
+    const result = await this.findVersionedUpdates();
 
-    return chain.then(result => {
-      if (!result) {
-        // early return from nested VersionCommand
-        return false;
-      }
+    if (!result) {
+      // early return from nested VersionCommand
+      return false;
+    }
 
-      if (!result.updates.length) {
-        this.logger.success("No changed packages to publish");
+    if (!result.updates.length) {
+      this.logger.success("No changed packages to publish");
 
-        // still exits zero, aka "ok"
-        return false;
-      }
+      // still exits zero, aka "ok"
+      return false;
+    }
 
-      this.updates = result.updates;
-      this.updatesVersions = new Map(result.updatesVersions);
+    this.updates = result.updates;
+    this.updatesVersions = new Map(result.updatesVersions);
 
-      this.packagesToPublish = this.updates.map(({ pkg }) => pkg).filter(pkg => !pkg.private);
-      this.batchedPackages = this.toposort
-        ? batchPackages(
-            this.packagesToPublish,
-            this.options.rejectCycles,
-            // Don't sort based on devDependencies because that
-            // would increase the chance of dependency cycles
-            // causing less-than-ideal a publishing order.
-            "dependencies"
-          )
-        : [this.packagesToPublish];
+    this.runPackageLifecycle = createRunner(this.options);
+    this.packagesToPublish = this.updates.map(({ pkg }) => pkg).filter(pkg => !pkg.private);
+    this.batchedPackages = this.toposort
+      ? batchPackages(
+          this.packagesToPublish,
+          this.options.rejectCycles,
+          // Don't sort based on devDependencies because that
+          // would increase the chance of dependency cycles
+          // causing less-than-ideal a publishing order.
+          "dependencies"
+        )
+      : [this.packagesToPublish];
 
-      if (result.needsConfirmation) {
-        // only confirm for --canary, bump === "from-git",
-        // or bump === "from-package", as VersionCommand
-        // has its own confirmation prompt
-        return this.confirmPublish();
-      }
+    if (result.needsConfirmation) {
+      // only confirm for --canary, bump === "from-git",
+      // or bump === "from-package", as VersionCommand
+      // has its own confirmation prompt
+      return this.confirmPublish();
+    }
 
-      return true;
-    });
+    return true;
   }
 
-  execute() {
+  async execute() {
     this.enableProgressBar();
     this.logger.info("publish", "Publishing packages to npm...");
 
-    let chain = Promise.resolve();
-
-    chain = chain.then(() => this.prepareRegistryActions());
-    chain = chain.then(() => this.prepareLicenseActions());
+    await this.prepareRegistryActions();
+    await this.prepareLicenseActions();
 
     if (this.options.canary) {
-      chain = chain.then(() => this.updateCanaryVersions());
+      await this.updateCanaryVersions();
     }
 
-    chain = chain.then(() => this.resolveLocalDependencyLinks());
-    chain = chain.then(() => this.annotateGitHead());
-    chain = chain.then(() => this.serializeChanges());
-    chain = chain.then(() => this.packUpdated());
-    chain = chain.then(() => this.publishPacked());
+    await this.resolveLocalDependencyLinks();
+    await this.annotateGitHead();
+    await this.serializeChanges();
+    await this.packUpdated();
+    await this.publishPacked();
 
     if (this.gitReset) {
-      chain = chain.then(() => this.resetChanges());
+      await this.resetChanges();
     }
 
     if (this.options.tempTag) {
-      chain = chain.then(() => this.npmUpdateAsLatest());
+      await this.npmUpdateAsLatest();
     }
 
-    return chain.then(() => {
-      const count = this.packagesToPublish.length;
-      const message = this.packagesToPublish.map(pkg => ` - ${pkg.name}@${pkg.version}`);
+    const count = this.packagesToPublish.length;
+    const message = this.packagesToPublish.map(pkg => ` - ${pkg.name}@${pkg.version}`);
 
-      output("Successfully published:");
-      output(message.join(os.EOL));
+    output("Successfully published:");
+    output(message.join(os.EOL));
 
-      this.logger.success("published", "%d %s", count, count === 1 ? "package" : "packages");
-    });
+    this.logger.success("published", "%d %s", count, count === 1 ? "package" : "packages");
   }
 
   verifyWorkingTreeClean() {
@@ -201,77 +194,62 @@ class PublishCommand extends Command {
   }
 
   findVersionedUpdates() {
-    let chain = Promise.resolve();
-
     if (this.options.bump === "from-git") {
-      chain = chain.then(() => this.detectFromGit());
-    } else if (this.options.bump === "from-package") {
-      chain = chain.then(() => this.detectFromPackage());
-    } else if (this.options.canary) {
-      chain = chain.then(() => this.detectCanaryVersions());
-    } else {
-      chain = chain.then(() => versionCommand(this.argv));
+      return this.detectFromGit();
     }
 
-    return chain;
+    if (this.options.bump === "from-package") {
+      return this.detectFromPackage();
+    }
+
+    if (this.options.canary) {
+      return this.detectCanaryVersions();
+    }
+
+    return versionCommand(this.argv);
   }
 
-  detectFromGit() {
+  async detectFromGit() {
     const { tagVersionPrefix = "v" } = this.options;
     const matchingPattern = this.project.isIndependent() ? "*@*" : `${tagVersionPrefix}*.*.*`;
+    const taggedPackageNames = await getCurrentTags(this.execOpts, matchingPattern);
+    let updates;
 
-    let chain = Promise.resolve();
+    if (!taggedPackageNames.length) {
+      this.logger.notice("from-git", "No tagged release found");
+      updates = [];
+    } else if (this.project.isIndependent()) {
+      updates = taggedPackageNames.map(name => this.packageGraph.get(name));
+    } else {
+      updates = await getTaggedPackages(this.packageGraph, this.project.rootPath, this.execOpts);
+    }
 
-    chain = chain.then(() => getCurrentTags(this.execOpts, matchingPattern));
-    chain = chain.then(taggedPackageNames => {
-      if (!taggedPackageNames.length) {
-        this.logger.notice("from-git", "No tagged release found");
+    const updatesVersions = updates.map(({ pkg }) => [pkg.name, pkg.version]);
 
-        return [];
-      }
-
-      if (this.project.isIndependent()) {
-        return taggedPackageNames.map(name => this.packageGraph.get(name));
-      }
-
-      return getTaggedPackages(this.packageGraph, this.project.rootPath, this.execOpts);
-    });
-
-    return chain.then(updates => {
-      const updatesVersions = updates.map(({ pkg }) => [pkg.name, pkg.version]);
-
-      return {
-        updates,
-        updatesVersions,
-        needsConfirmation: true,
-      };
-    });
+    return {
+      updates,
+      updatesVersions,
+      needsConfirmation: true,
+    };
   }
 
-  detectFromPackage() {
-    let chain = Promise.resolve();
+  async detectFromPackage() {
+    const updates = await getUnpublishedPackages(this.packageGraph, this.conf.snapshot);
 
-    chain = chain.then(() => getUnpublishedPackages(this.packageGraph, this.conf.snapshot));
-    chain = chain.then(unpublished => {
-      if (!unpublished.length) {
-        this.logger.notice("from-package", "No unpublished release found");
-      }
+    if (!updates.length) {
+      this.logger.notice("from-package", "No unpublished release found");
+    }
 
-      return unpublished;
-    });
+    const updatesVersions = updates.map(({ pkg }) => [pkg.name, pkg.version]);
 
-    return chain.then(updates => {
-      const updatesVersions = updates.map(({ pkg }) => [pkg.name, pkg.version]);
-
-      return {
-        updates,
-        updatesVersions,
-        needsConfirmation: true,
-      };
-    });
+    return {
+      updates,
+      updatesVersions,
+      needsConfirmation: true,
+    };
   }
 
-  detectCanaryVersions() {
+  async detectCanaryVersions() {
     const { cwd } = this.execOpts;
     const {
       bump = "prepatch",
@@ -284,18 +262,15 @@ class PublishCommand extends Command {
     // "prerelease" and "prepatch" are identical, for our purposes
     const release = bump.startsWith("pre") ? bump.replace("release", "patch") : `pre${bump}`;
 
-    let chain = Promise.resolve();
-
     // find changed packages since last release, if any
-    chain = chain.then(() =>
-      collectUpdates(this.packageGraph.rawPackageList, this.packageGraph, this.execOpts, {
-        bump: "prerelease",
-        canary: true,
-        ignoreChanges,
-        forcePublish,
-        includeMergedTags,
-      })
-    );
+    const updates = await collectUpdates(this.packageGraph.rawPackageList, this.packageGraph, this.execOpts, {
+      bump: "prerelease",
+      canary: true,
+      ignoreChanges,
+      forcePublish,
+      includeMergedTags,
+    });
+    let updatesVersions;
 
     const makeVersion = ({ lastVersion, refCount, sha }) => {
       // the next version is bumped without concern for preid or current index
@@ -308,49 +283,38 @@ class PublishCommand extends Command {
 
     if (this.project.isIndependent()) {
       // each package is described against its tags only
-      chain = chain.then(updates =>
-        pMap(updates, ({ pkg }) =>
-          describeRef(
-            {
-              match: `${pkg.name}@*`,
-              cwd,
-            },
-            includeMergedTags
-          )
-            .then(({ lastVersion = pkg.version, refCount, sha }) =>
-              // an unpublished package will have no reachable git tag
-              makeVersion({ lastVersion, refCount, sha })
-            )
-            .then(version => [pkg.name, version])
-        ).then(updatesVersions => ({
-          updates,
-          updatesVersions,
-        }))
-      );
-    } else {
-      // all packages are described against the last tag
-      chain = chain.then(updates =>
+      updatesVersions = await pMap(updates, ({ pkg }) =>
         describeRef(
           {
-            match: `${tagVersionPrefix}*.*.*`,
+            match: `${pkg.name}@*`,
             cwd,
           },
           includeMergedTags
         )
-          .then(makeVersion)
-          .then(version => updates.map(({ pkg }) => [pkg.name, version]))
-          .then(updatesVersions => ({
-            updates,
-            updatesVersions,
-          }))
+          .then(({ lastVersion = pkg.version, refCount, sha }) =>
+            // an unpublished package will have no reachable git tag
+            makeVersion({ lastVersion, refCount, sha })
+          )
+          .then(version => [pkg.name, version])
       );
+    } else {
+      // all packages are described against the last tag
+      updatesVersions = await describeRef(
+        {
+          match: `${tagVersionPrefix}*.*.*`,
+          cwd,
+        },
+        includeMergedTags
+      )
+        .then(makeVersion)
+        .then(version => updates.map(({ pkg }) => [pkg.name, version]));
     }
 
-    return chain.then(({ updates, updatesVersions }) => ({
+    return {
       updates,
       updatesVersions,
       needsConfirmation: true,
-    }));
+    };
   }
 
   confirmPublish() {
