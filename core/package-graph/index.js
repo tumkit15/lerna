@@ -89,7 +89,7 @@ class PackageGraph extends Map {
       }
     }
 
-    this.forEach((currentNode, currentName) => {
+    for (const [currentName, currentNode] of this.entries()) {
       const graphDependencies =
         graphType === "dependencies"
           ? Object.assign({}, currentNode.pkg.optionalDependencies, currentNode.pkg.dependencies)
@@ -100,20 +100,18 @@ class PackageGraph extends Map {
               currentNode.pkg.dependencies
             );
 
-      Object.keys(graphDependencies).forEach(depName => {
-        const depNode = this.get(depName);
+      for (const depName of Object.keys(graphDependencies)) {
         // Yarn decided to ignore https://github.com/npm/npm/pull/15900 and implemented "link:"
         // As they apparently have no intention of being compatible, we have to do it for them.
         // @see https://github.com/yarnpkg/yarn/issues/4212
         const spec = graphDependencies[depName].replace(/^link:/, "file:");
         const resolved = npa.resolve(depName, spec, currentNode.location);
+        const depNode = this.get(depName);
 
         if (!depNode) {
-          // it's an external dependency, store the resolution and bail
-          return currentNode.externalDependencies.set(depName, resolved);
-        }
-
-        if (forceLocal || resolved.fetchSpec === depNode.location || depNode.satisfies(resolved)) {
+          // it's an external dependency, store the resolution
+          currentNode.externalDependencies.set(depName, resolved);
+        } else if (forceLocal || resolved.fetchSpec === depNode.location || depNode.satisfies(resolved)) {
           // a local file: specifier OR a matching semver
           currentNode.localDependencies.set(depName, resolved);
           depNode.localDependents.set(currentName, currentNode);
@@ -121,8 +119,8 @@ class PackageGraph extends Map {
           // non-matching semver of a local dependency
           currentNode.externalDependencies.set(depName, resolved);
         }
-      });
-    });
+      }
+    }
   }
 
   get rawPackageList() {
